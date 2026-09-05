@@ -950,8 +950,8 @@ cat > /etc/issue << EOF
 ============================================================
   Web UI Access   : https://${HOST_IP}/
   Default User    : admin
-  Default Pass    : pnet
-  SSH Management  : ssh root@${HOST_IP}
+  Default Pass    : azam
+  SSH Management  : ssh root@${HOST_IP} (Password: azam)
 ============================================================
 
 \S (\l)
@@ -966,7 +966,7 @@ echo "      Running Post-Install Diagnostic Self-Test...          "
 echo "============================================================"
 
 # Test 1: Web Authentication
-AUTH_CODE="$(curl -k -s -o /dev/null -w "%{http_code}" -X POST https://127.0.0.1/api/auth -H 'Content-Type: application/json' -d '{"username":"admin","password":"pnet"}' 2>/dev/null || echo "000")"
+AUTH_CODE="$(curl -k -s -o /dev/null -w "%{http_code}" -X POST https://127.0.0.1/api/auth -H 'Content-Type: application/json' -d '{"username":"admin","password":"azam"}' 2>/dev/null || echo "000")"
 if [ "$AUTH_CODE" = "200" ]; then
     echo "  [✔ PASS] Web UI & Live Authentication : OK (200 OK)"
 else

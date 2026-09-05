@@ -164,7 +164,7 @@ def deploy_host(host, user, password, port, args):
         
         # Upload root installer files
         ensure_remote_dir(sftp, remote_base)
-        for rfile in ["install.sh", "install-satellite.sh", "README.md", "VERIFICATION_REPORT.md"]:
+        for rfile in ["install.sh", "install-satellite.sh", "azambasha-bootstrap-and-install.sh", "README.md", "VERIFICATION_REPORT.md"]:
             lpath = os.path.join(BASE_DIR, rfile)
             if os.path.exists(lpath) and not args.dry_run:
                 sftp.put(lpath, f"{remote_base}/{rfile}")
