@@ -282,6 +282,43 @@ with open("/etc/netplan/01-pnetlab-netcfg.yaml", "w") as f:
     f.write(netplan_content)
 os.chmod("/etc/netplan/01-pnetlab-netcfg.yaml", 0o600)
 
+# Neutralize legacy OVF/firstboot wizard permanently
+os.makedirs("/opt/ovf", exist_ok=True)
+for flag_file in ["/opt/ovf/.configured", "/opt/ovf/configured", "/opt/unetlab/.configured"]:
+    try:
+        with open(flag_file, "w") as f:
+            f.write("configured\n")
+        os.chmod(flag_file, 0o644)
+    except Exception:
+        pass
+
+profile_ovf = "/etc/profile.d/ovf.sh"
+try:
+    with open(profile_ovf, "w") as f:
+        f.write("""# PNetLab environment aliases
+alias unl_wrapper='/opt/unetlab/wrappers/unl_wrapper'
+alias pnet_info='/opt/unetlab/scripts/pnet_info.sh'
+alias azam-doctor='/usr/local/bin/azam-doctor'
+alias azam-menu='/usr/local/bin/azam-menu'
+""")
+    os.chmod(profile_ovf, 0o644)
+except Exception:
+    pass
+
+# Apply network configuration immediately
+run_cmd(["systemctl", "enable", "--now", "systemd-networkd"])
+run_cmd(["netplan", "apply"])
+
+if is_static and current_ip:
+    run_cmd(["ip", "link", "set", "dev", real_iface, "up", "promisc", "on"])
+    run_cmd(["ip", "link", "set", "dev", real_iface, "master", "pnet0"])
+    run_cmd(["ip", "link", "set", "dev", "pnet0", "up", "promisc", "on"])
+    run_cmd(["ip", "addr", "flush", "dev", real_iface])
+    run_cmd(["ip", "addr", "flush", "dev", "pnet0"])
+    run_cmd(["ip", "addr", "add", f"{current_ip}/{cidr}", "dev", "pnet0"])
+    if current_gw:
+        run_cmd(["ip", "route", "replace", "default", "via", current_gw, "dev", "pnet0"])
+
 # 6. Install Persistent Boot Guard Engine & Systemd Unit
 print("[6/7] Installing Azam-Pnet persistent network supervisor...")
 engine_script = """#!/usr/bin/env python3
@@ -290,6 +327,7 @@ import sys
 import subprocess
 import shutil
 import ipaddress
+import re
 import time
 
 def discover_physical_uplink():
@@ -396,16 +434,58 @@ iface pnet0 inet dhcp
             pass
 
     # 3. Ensure pnet0 bridge exists and real_iface is enslaved
-    subprocess.run(["ip", "link", "set", "dev", real_iface, "up"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["ip", "link", "set", "dev", real_iface, "up", "promisc", "on"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     res = subprocess.run(["ip", "link", "show", "pnet0"], capture_output=True, text=True)
     if res.returncode != 0:
         subprocess.run(["ip", "link", "add", "name", "pnet0", "type", "bridge", "forward_delay", "0", "stp_state", "0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
-    subprocess.run(["ip", "link", "set", "dev", real_iface, "master", "pnet0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["ip", "link", "set", "dev", "pnet0", "up"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["ip", "link", "set", "dev", "pnet0", "promisc", "on"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Clone MAC address from physical NIC to bridge for VMware / Hypervisor compatibility
+    try:
+        with open(f"/sys/class/net/{real_iface}/address", "r") as f:
+            mac = f.read().strip()
+            if mac:
+                subprocess.run(["ip", "link", "set", "dev", "pnet0", "address", mac], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
 
-    # 4. Enable Kernel Bridge Control Frame Forwarding (group_fwd_mask 65535)
+    subprocess.run(["ip", "link", "set", "dev", real_iface, "master", "pnet0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["ip", "link", "set", "dev", "pnet0", "up", "promisc", "on"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # 4. Enable systemd-networkd & apply Netplan
+    subprocess.run(["systemctl", "enable", "--now", "systemd-networkd"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["netplan", "apply"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # 5. Direct kernel IP assignment check & enforcement
+    res_ip = subprocess.run(["ip", "-o", "-4", "addr", "show", "pnet0"], capture_output=True, text=True)
+    if not res_ip.stdout.strip():
+        if os.path.exists(ifaces_path):
+            try:
+                with open(ifaces_path, "r") as f:
+                    c = f.read()
+                if "iface pnet0 inet static" in c:
+                    m_ip = re.search(r'^\s*address\s+([0-9.]+)', c, re.MULTILINE)
+                    m_mask = re.search(r'^\s*netmask\s+([0-9.]+)', c, re.MULTILINE)
+                    m_gw = re.search(r'^\s*gateway\s+([0-9.]+)', c, re.MULTILINE)
+                    if m_ip:
+                        ip_val = m_ip.group(1).strip()
+                        mask_val = m_mask.group(1).strip() if m_mask else "255.255.255.0"
+                        cidr = 24
+                        try:
+                            cidr = ipaddress.IPv4Network(f"0.0.0.0/{mask_val}").prefixlen
+                        except Exception:
+                            pass
+                        subprocess.run(["ip", "addr", "flush", "dev", real_iface], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        subprocess.run(["ip", "addr", "flush", "dev", "pnet0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        subprocess.run(["ip", "addr", "add", f"{ip_val}/{cidr}", "dev", "pnet0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        if m_gw:
+                            gw_val = m_gw.group(1).strip()
+                            subprocess.run(["ip", "route", "replace", "default", "via", gw_val, "dev", "pnet0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                else:
+                    subprocess.run(["dhclient", "-v", "pnet0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+
+    # 6. Enable Kernel Bridge Control Frame Forwarding (group_fwd_mask 65535)
     for i in range(10):
         br_name = f"pnet{i}"
         fwd_mask_path = f"/sys/class/net/{br_name}/bridge/group_fwd_mask"
@@ -416,7 +496,7 @@ iface pnet0 inet dhcp
             except Exception:
                 pass
 
-    # 5. Bridge sysctl bypass
+    # 7. Bridge sysctl bypass
     subprocess.run(["sysctl", "-w", "net.bridge.bridge-nf-call-iptables=0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(["sysctl", "-w", "net.bridge.bridge-nf-call-arptables=0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(["sysctl", "-w", "net.bridge.bridge-nf-call-ip6tables=0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

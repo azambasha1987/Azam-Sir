@@ -274,6 +274,21 @@ iface pnet0 inet dhcp
 INTEOF
     fi
     chmod 644 /etc/network/interfaces
+
+    systemctl enable --now systemd-networkd 2>/dev/null || true
+    netplan apply 2>/dev/null || true
+    if [ -n "$STATIC_IP" ]; then
+        IP_NET="$STATIC_IP"
+        [[ "$IP_NET" != *"/"* ]] && IP_NET="${IP_NET}/24"
+        ip link add name pnet0 type bridge forward_delay 0 stp_state 0 2>/dev/null || true
+        ip link set dev "$REAL_IFACE" master pnet0 2>/dev/null || true
+        ip link set dev "$REAL_IFACE" up promisc on 2>/dev/null || true
+        ip link set dev pnet0 up promisc on 2>/dev/null || true
+        ip addr flush dev "$REAL_IFACE" 2>/dev/null || true
+        ip addr flush dev pnet0 2>/dev/null || true
+        ip addr add "$IP_NET" dev pnet0 2>/dev/null || true
+        [ -n "$STATIC_GW" ] && ip route replace default via "$STATIC_GW" dev pnet0 2>/dev/null || true
+    fi
 fi
 
 if ! grep -Eq '(vmx|svm)' /proc/cpuinfo; then
@@ -821,12 +836,16 @@ fi
 
 # --- Step 8: Apply Modernization Suite & Essential Fixes ---
 echo "[8/8] Applying Ubuntu 26 modernization, session fixes, and update freeze..."
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-eth0-permanent.py" ]; then
+    python3 "${SCRIPT_DIR}/scripts/azambasha-fix-eth0-permanent.py" || true
+fi
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" ]; then
+    python3 "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" || true
+fi
 if [ -n "$STATIC_IP" ] && [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" "$STATIC_IP" "255.255.255.0" "$STATIC_GW" || true
 elif [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" || true
-elif [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" ]; then
-    python3 "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" || true
 fi
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-php-modernizer.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-php-modernizer.sh" || true
