@@ -42,6 +42,18 @@ else
     fi
 fi
 
+# Parse Static IP options for Stage 3 enforcement
+STATIC_IP=""
+STATIC_GW=""
+ARGS=("$@")
+for ((i=0; i<${#ARGS[@]}; i++)); do
+    if [[ "${ARGS[i]}" == "--static" || "${ARGS[i]}" == "-s" ]]; then
+        STATIC_IP="${ARGS[i+1]:-}"
+    elif [[ "${ARGS[i]}" == "--gateway" || "${ARGS[i]}" == "-g" ]]; then
+        STATIC_GW="${ARGS[i+1]:-}"
+    fi
+done
+
 # --- Step 2: Launch Azam-Pnet Software Installation ---
 echo ""
 echo ">>> STAGE 2: Installing Azam-Pnet Core Software & Packages..."
@@ -56,8 +68,14 @@ fi
 # --- Step 3: Enforce Permanent Network Engine & Post-Install Fixes ---
 echo ""
 echo ">>> STAGE 3: Enforcing Permanent Network Engine & Supervisor..."
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-eth0-permanent.py" ]; then
+    python3 "${SCRIPT_DIR}/scripts/azambasha-fix-eth0-permanent.py" || true
+fi
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" ]; then
-    python3 "${SCRIPT_DIR}/scripts/azambasha-fix-network.py"
+    python3 "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" || true
+fi
+if [ -n "$STATIC_IP" ] && [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" "$STATIC_IP" "255.255.255.0" "$STATIC_GW" || true
 fi
 
 echo ""

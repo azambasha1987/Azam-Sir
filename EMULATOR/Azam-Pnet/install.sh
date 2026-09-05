@@ -432,7 +432,11 @@ if [ -n "$DEB_POOL_DIR" ] && [ -d "$DEB_POOL_DIR" ] && compgen -G "${DEB_POOL_DI
         fi
     done
 
-    # Apply authoritative network broker & interfaces synchronization
+    # Neutralize legacy OVF wizard and apply authoritative network broker & interfaces synchronization
+    if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-eth0-permanent.py" ]; then
+        echo "      -> Neutralizing legacy setup wizard and OVF loop..."
+        python3 "${SCRIPT_DIR}/scripts/azambasha-fix-eth0-permanent.py" || true
+    fi
     if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" ]; then
         echo "      -> Applying network broker & interfaces synchronization..."
         python3 "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" || true
