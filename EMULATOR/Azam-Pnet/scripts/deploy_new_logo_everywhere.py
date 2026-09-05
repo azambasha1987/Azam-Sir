@@ -1,79 +1,106 @@
-import paramiko
 import sys
 import time
 import os
-from PIL import Image
+import shutil
 
 if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
-CLEAN_LOGO_LOCAL = r"C:\Users\azamb\.gemini\antigravity-ide\brain\ad475abf-4846-4fb3-bb0b-f12c4f938431\scratch\logo_clean.png"
-LOCAL_GIT_ASSETS = r"e:\Git\EMULATOR\Azam-Pnet\assets"
+# Resolve repository directories dynamically
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(SCRIPT_DIR)
+ASSETS_DIR = os.path.join(BASE_DIR, "assets")
+LOGIN_DIR = os.path.join(BASE_DIR, "login")
 
-def deploy_new_logo():
-    # 1. Update local repository assets
-    os.makedirs(LOCAL_GIT_ASSETS, exist_ok=True)
-    img = Image.open(CLEAN_LOGO_LOCAL)
-    img.save(os.path.join(LOCAL_GIT_ASSETS, "logo.png"), "PNG")
+def deploy_locally():
+    print("[*] Applying Azam Basha Branding & Logo Assets natively...")
     
-    # Save icon (64x64)
-    img_icon = img.resize((64, 64), Image.Resampling.LANCZOS)
-    img_icon.save(os.path.join(LOCAL_GIT_ASSETS, "logo-icon.png"), "PNG")
+    logo_src = os.path.join(ASSETS_DIR, "logo.png")
+    favicon_src = os.path.join(ASSETS_DIR, "favicon.ico")
+    favicon_png_src = os.path.join(ASSETS_DIR, "favicon.png")
     
-    # Save favicon.ico (multi-size)
-    favicon_local = os.path.join(LOCAL_GIT_ASSETS, "favicon.ico")
-    img.save(favicon_local, format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64)])
-    print("[+] Updated local Git repository assets in e:\\Git\\EMULATOR\\Azam-Pnet\\assets")
-
-    # 2. Connect to Remote VM
-    print("[*] Connecting to 192.168.1.29 via SFTP...")
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect('192.168.1.29', port=22, username='root', password='azam', look_for_keys=False, allow_agent=False)
-    sftp = client.open_sftp()
+    if not os.path.exists(logo_src):
+        print(f"[!] Logo source not found at {logo_src}")
+        return False
 
     remote_logo_paths = [
         "/opt/unetlab/data/branding/logo.png",
         "/opt/unetlab/html/images/logo.png",
         "/opt/unetlab/html/themes/default/images/logo.png",
         "/opt/unetlab/html/assets-common/img/logo.png",
-        "/opt/azambasha/assets/logo.png",
-        "/opt/azambasha/assets/logo-icon.png"
+        "/usr/share/plymouth/themes/pnetlab/logo.png"
     ]
 
     for rpath in remote_logo_paths:
         rdir = os.path.dirname(rpath)
-        client.exec_command(f"mkdir -p '{rdir}'")
-        print(f"[*] Uploading logo to {rpath}...")
-        sftp.put(CLEAN_LOGO_LOCAL, rpath)
-        client.exec_command(f"chmod 644 '{rpath}'")
+        os.makedirs(rdir, exist_ok=True)
+        try:
+            shutil.copyfile(logo_src, rpath)
+            os.chmod(rpath, 0o644)
+            print(f"  [✔] Deployed logo -> {rpath}")
+        except Exception as e:
+            print(f"  [-] Note for {rpath}: {e}")
 
     remote_favicon_paths = [
         "/opt/unetlab/html/images/favicon.png",
         "/opt/unetlab/html/themes/default/images/favicon.ico",
         "/opt/unetlab/html/favicon.ico",
-        "/opt/unetlab/html/favicon/favicon.ico"
+        "/opt/unetlab/html/favicon/favicon.ico",
+        "/opt/unetlab/html/assets-common/img/favicon.ico",
+        "/opt/unetlab/html/assets-common/img/favicon.png"
     ]
 
     for fpath in remote_favicon_paths:
         rdir = os.path.dirname(fpath)
-        client.exec_command(f"mkdir -p '{rdir}'")
-        print(f"[*] Uploading favicon to {fpath}...")
-        sftp.put(favicon_local, fpath)
-        client.exec_command(f"chmod 644 '{fpath}'")
+        os.makedirs(rdir, exist_ok=True)
+        src = favicon_png_src if fpath.endswith(".png") and os.path.exists(favicon_png_src) else favicon_src
+        if os.path.exists(src):
+            try:
+                shutil.copyfile(src, fpath)
+                os.chmod(fpath, 0o644)
+                print(f"  [✔] Deployed favicon -> {fpath}")
+            except Exception as e:
+                print(f"  [-] Note for {fpath}: {e}")
+
+    # Copy modernized login page if available
+    login_html_src = os.path.join(LOGIN_DIR, "index.html")
+    login_css_src = os.path.join(LOGIN_DIR, "login.css")
+    if os.path.exists(login_html_src):
+        dest_html = "/opt/unetlab/html/login/index.html"
+        os.makedirs("/opt/unetlab/html/login", exist_ok=True)
+        try:
+            shutil.copyfile(login_html_src, dest_html)
+            os.chmod(dest_html, 0o644)
+            print(f"  [✔] Deployed modernized login HTML -> {dest_html}")
+        except Exception as e:
+            print(f"  [-] Note for {dest_html}: {e}")
+
+    if os.path.exists(login_css_src):
+        dest_css = "/opt/unetlab/html/login/login.css"
+        try:
+            shutil.copyfile(login_css_src, dest_css)
+            os.chmod(dest_css, 0o644)
+            print(f"  [✔] Deployed modernized login CSS -> {dest_css}")
+        except Exception as e:
+            print(f"  [-] Note for {dest_css}: {e}")
 
     # Update branding config.json to cache bust
     now_ts = int(time.time())
-    cfg_json = f'{{\n    "name": "Azam Basha",\n    "login_header": "Azam Basha Network Emulation Platform",\n    "hide_default_creds": false,\n    "updated_at": {now_ts}\n}}'
-    print("[*] Updating /opt/unetlab/data/branding/config.json...")
-    with sftp.open('/opt/unetlab/data/branding/config.json', 'w') as f:
-        f.write(cfg_json.encode('utf-8'))
-        
-    client.exec_command("chmod -R 777 /opt/unetlab/data/branding && chown -R www-data:www-data /opt/unetlab/data/branding")
-
-    sftp.close()
-    client.close()
-    print("[+] Successfully replaced the logo everywhere across the entire platform!")
+    cfg_json = f'{{\n    "name": "Azam Basha",\n    "login_header": "Azam Basha Network Emulation Platform",\n    "hide_default_creds": false,\n    "updated_at": {now_ts}\n}}\n'
+    cfg_path = "/opt/unetlab/data/branding/config.json"
+    os.makedirs("/opt/unetlab/data/branding", exist_ok=True)
+    with open(cfg_path, 'w', encoding='utf-8') as f:
+        f.write(cfg_json)
+    
+    os.system("chown -R www-data:www-data /opt/unetlab/data/branding 2>/dev/null || true")
+    os.system("chmod -R 777 /opt/unetlab/data/branding 2>/dev/null || true")
+    print(f"  [✔] Updated {cfg_path}")
+    print("\n[SUCCESS] Azam Basha Branding deployed successfully!")
+    return True
 
 if __name__ == "__main__":
-    deploy_new_logo()
+    deploy_locally()
+
