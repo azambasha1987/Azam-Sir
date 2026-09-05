@@ -53,13 +53,13 @@ def discover_physical_uplink():
             if os.path.exists(os.path.join(net_dir, dev, "device")):
                 carrier = 0
                 try:
-                    with open(os.path.join(net_dir, dev, "carrier"), "r") as f:
+                    with open(os.path.join(net_dir, dev, "carrier"), "r", encoding="utf-8", errors="ignore") as f:
                         carrier = int(f.read().strip())
                 except Exception:
                     pass
                 operstate = "unknown"
                 try:
-                    with open(os.path.join(net_dir, dev, "operstate"), "r") as f:
+                    with open(os.path.join(net_dir, dev, "operstate"), "r", encoding="utf-8", errors="ignore") as f:
                         operstate = f.read().strip()
                 except Exception:
                     pass
@@ -108,7 +108,7 @@ except Exception:
 # Permanently disable cloud-init network overrides
 os.makedirs("/etc/cloud/cloud.cfg.d", exist_ok=True)
 try:
-    with open("/etc/cloud/cloud.cfg.d/99-disable-network-config.cfg", "w") as f:
+    with open("/etc/cloud/cloud.cfg.d/99-disable-network-config.cfg", "w", encoding="utf-8") as f:
         f.write("network: {config: disabled}\n")
 except Exception:
     pass
@@ -124,14 +124,14 @@ for f in os.listdir("/etc/netplan"):
 # 4. Bridge sysctl bypass and module configuration
 print("[4/7] Applying kernel bridge bypass and sysctl forwarding parameters...")
 os.makedirs("/etc/modules-load.d", exist_ok=True)
-with open("/etc/modules-load.d/pnetlab.conf", "w") as f:
+with open("/etc/modules-load.d/pnetlab.conf", "w", encoding="utf-8") as f:
     f.write("bridge\nstp\nllc\n8021q\ntun\ndummy\nbr_netfilter\n")
 
 for mod in ["bridge", "8021q", "tun", "br_netfilter"]:
     run_cmd(["modprobe", mod])
 
 os.makedirs("/etc/sysctl.d", exist_ok=True)
-with open("/etc/sysctl.d/99-pnetlab-bridge.conf", "w") as f:
+with open("/etc/sysctl.d/99-pnetlab-bridge.conf", "w", encoding="utf-8") as f:
     f.write("""net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
 net.bridge.bridge-nf-call-ip6tables = 0
@@ -175,7 +175,7 @@ for line in stdout.splitlines():
 # Check existing netplan or interfaces for static intent
 if os.path.exists("/etc/network/interfaces"):
     try:
-        with open("/etc/network/interfaces", "r") as f:
+        with open("/etc/network/interfaces", "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
             if "iface pnet0 inet static" in content:
                 is_static = True
@@ -274,11 +274,11 @@ iface pnet0 inet dhcp
         forward-delay: 0
 """
 
-with open("/etc/network/interfaces", "w") as f:
+with open("/etc/network/interfaces", "w", encoding="utf-8") as f:
     f.write(ifaces_content)
 os.chmod("/etc/network/interfaces", 0o644)
 
-with open("/etc/netplan/01-pnetlab-netcfg.yaml", "w") as f:
+with open("/etc/netplan/01-pnetlab-netcfg.yaml", "w", encoding="utf-8") as f:
     f.write(netplan_content)
 os.chmod("/etc/netplan/01-pnetlab-netcfg.yaml", 0o600)
 
@@ -286,7 +286,7 @@ os.chmod("/etc/netplan/01-pnetlab-netcfg.yaml", 0o600)
 os.makedirs("/opt/ovf", exist_ok=True)
 for flag_file in ["/opt/ovf/.configured", "/opt/ovf/configured", "/opt/unetlab/.configured"]:
     try:
-        with open(flag_file, "w") as f:
+        with open(flag_file, "w", encoding="utf-8") as f:
             f.write("configured\n")
         os.chmod(flag_file, 0o644)
     except Exception:
@@ -294,7 +294,7 @@ for flag_file in ["/opt/ovf/.configured", "/opt/ovf/configured", "/opt/unetlab/.
 
 profile_ovf = "/etc/profile.d/ovf.sh"
 try:
-    with open(profile_ovf, "w") as f:
+    with open(profile_ovf, "w", encoding="utf-8") as f:
         f.write("""# PNetLab environment aliases
 alias unl_wrapper='/opt/unetlab/wrappers/unl_wrapper'
 alias pnet_info='/opt/unetlab/scripts/pnet_info.sh'
@@ -321,7 +321,7 @@ if is_static and current_ip:
 
 # 6. Install Persistent Boot Guard Engine & Systemd Unit
 print("[6/7] Installing Azam-Pnet persistent network supervisor...")
-engine_script = """#!/usr/bin/env python3
+engine_script = r"""#!/usr/bin/env python3
 import os
 import sys
 import subprocess
@@ -400,7 +400,7 @@ def main():
         needs_ifaces_repair = True
     else:
         try:
-            with open(ifaces_path, "r") as f:
+            with open(ifaces_path, "r", encoding="utf-8", errors="ignore") as f:
                 c = f.read()
                 if "pnet0" not in c:
                     needs_ifaces_repair = True
@@ -427,7 +427,7 @@ iface pnet0 inet dhcp
 # END pnetlab-netcfg pnet0
 '''
         try:
-            with open(ifaces_path, "w") as f:
+            with open(ifaces_path, "w", encoding="utf-8") as f:
                 f.write(default_ifaces)
             os.chmod(ifaces_path, 0o644)
         except Exception:
@@ -441,7 +441,7 @@ iface pnet0 inet dhcp
     
     # Clone MAC address from physical NIC to bridge for VMware / Hypervisor compatibility
     try:
-        with open(f"/sys/class/net/{real_iface}/address", "r") as f:
+        with open(f"/sys/class/net/{real_iface}/address", "r", encoding="utf-8", errors="ignore") as f:
             mac = f.read().strip()
             if mac:
                 subprocess.run(["ip", "link", "set", "dev", "pnet0", "address", mac], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -460,7 +460,7 @@ iface pnet0 inet dhcp
     if not res_ip.stdout.strip():
         if os.path.exists(ifaces_path):
             try:
-                with open(ifaces_path, "r") as f:
+                with open(ifaces_path, "r", encoding="utf-8", errors="ignore") as f:
                     c = f.read()
                 if "iface pnet0 inet static" in c:
                     m_ip = re.search(r'^\s*address\s+([0-9.]+)', c, re.MULTILINE)
@@ -491,7 +491,7 @@ iface pnet0 inet dhcp
         fwd_mask_path = f"/sys/class/net/{br_name}/bridge/group_fwd_mask"
         if os.path.exists(fwd_mask_path):
             try:
-                with open(fwd_mask_path, "w") as f:
+                with open(fwd_mask_path, "w", encoding="utf-8") as f:
                     f.write("65535\n")
             except Exception:
                 pass
@@ -506,7 +506,7 @@ if __name__ == "__main__":
     main()
 """
 
-with open("/usr/local/bin/pnetlab-network-engine", "w") as f:
+with open("/usr/local/bin/pnetlab-network-engine", "w", encoding="utf-8") as f:
     f.write(engine_script)
 os.chmod("/usr/local/bin/pnetlab-network-engine", 0o755)
 
@@ -526,7 +526,7 @@ TimeoutSec=15
 [Install]
 WantedBy=multi-user.target
 """
-with open("/etc/systemd/system/pnetlab-network-engine.service", "w") as f:
+with open("/etc/systemd/system/pnetlab-network-engine.service", "w", encoding="utf-8") as f:
     f.write(unit_content)
 
 run_cmd(["systemctl", "daemon-reload"])
@@ -608,7 +608,7 @@ def _ensure_interfaces_file():
         needs_init = True
     else:
         try:
-            with open(NETCFG_INTERFACES, "r") as f:
+            with open(NETCFG_INTERFACES, "r", encoding="utf-8", errors="ignore") as f:
                 c = f.read()
                 if "pnet0" not in c:
                     needs_init = True
@@ -633,7 +633,7 @@ def _ensure_interfaces_file():
             "# END pnetlab-netcfg pnet0\\n"
         )
         try:
-            with open(NETCFG_INTERFACES, "w") as f:
+            with open(NETCFG_INTERFACES, "w", encoding="utf-8") as f:
                 f.write(default_content)
             os.chmod(NETCFG_INTERFACES, 0o644)
         except Exception:
@@ -652,7 +652,7 @@ def _netcfg_read_interfaces():
     _ensure_interfaces_file()
     mode, address, netmask, gateway = "dhcp", "", "", ""
     try:
-        with open(NETCFG_INTERFACES) as f:
+        with open(NETCFG_INTERFACES, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.read().split("\\n")
     except OSError:
         lines = []
@@ -697,7 +697,7 @@ def _netcfg_read_interfaces():
 def _netcfg_read_resolved():
     dns, domain = [], ""
     try:
-        with open(NETCFG_RESOLVED) as f:
+        with open(NETCFG_RESOLVED, "r", encoding="utf-8", errors="ignore") as f:
             for ln in f:
                 s = ln.strip()
                 if s.startswith("DNS="):
@@ -805,7 +805,7 @@ def verb_server_netcfg(args):
     backup = _netcfg_backup(ts)
 
     try:
-        with open(NETCFG_INTERFACES) as f:
+        with open(NETCFG_INTERFACES, "r", encoding="utf-8", errors="ignore") as f:
             old = f.read()
     except OSError:
         old = ""
@@ -813,7 +813,7 @@ def verb_server_netcfg(args):
     iface_changed = (new != old)
     if iface_changed:
         tmp = NETCFG_INTERFACES + ".pnq.tmp"
-        with open(tmp, "w") as f:
+        with open(tmp, "w", encoding="utf-8") as f:
             f.write(new)
         os.chmod(tmp, 0o644)
         os.replace(tmp, NETCFG_INTERFACES)
@@ -875,7 +875,7 @@ def verb_server_netcfg(args):
                 "        stp: false\\n"
                 "        forward-delay: 0\\n"
             )
-        with open("/etc/netplan/01-pnetlab-netcfg.yaml", "w") as nf:
+        with open("/etc/netplan/01-pnetlab-netcfg.yaml", "w", encoding="utf-8") as nf:
             nf.write(netplan_yaml)
         os.chmod("/etc/netplan/01-pnetlab-netcfg.yaml", 0o600)
     except Exception:
@@ -888,7 +888,7 @@ def verb_server_netcfg(args):
         res += "Domains=%s\\n" % domain
     os.makedirs(os.path.dirname(NETCFG_RESOLVED), mode=0o755, exist_ok=True)
     rtmp = NETCFG_RESOLVED + ".pnq.tmp"
-    with open(rtmp, "w") as f:
+    with open(rtmp, "w", encoding="utf-8") as f:
         f.write(res)
     os.chmod(rtmp, 0o644)
     os.replace(rtmp, NETCFG_RESOLVED)

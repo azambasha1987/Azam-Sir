@@ -61,9 +61,9 @@ def config_put(filename, docker_id, timeout_sec=30, satellite_ip=None):
     runtime_dir = os.path.dirname(filename)
     tmpfile = os.path.join(runtime_dir, 'frr.conf')
     try:
-        with open(filename, 'r') as fd:
+        with open(filename, "r", encoding="utf-8", errors="ignore") as fd:
             content = fd.read()
-        with open(tmpfile, 'w') as fd:
+        with open(tmpfile, "w", encoding="utf-8") as fd:
             fd.write(content)
     except Exception as e:
         print('ERROR: cannot stage frr.conf: %s' % (e,))
@@ -132,7 +132,7 @@ def config_get(filename, docker_id, timeout_sec=30, satellite_ip=None):
         return False
 
     try:
-        with open(tmpfile, 'w') as fd:
+        with open(tmpfile, "w", encoding="utf-8") as fd:
             subprocess.run(docker_cmd + [
                 'exec', docker_id, 'vtysh', '-c', 'show running-config'
             ], stdout=fd, stderr=subprocess.PIPE, check=True, timeout=timeout_sec)
@@ -208,7 +208,8 @@ def main(action, filename, docker_id=None, timeout_sec=None, satellite_ip=None):
                 os.remove(lock)
             configured = '%s/.configured' % (os.path.dirname(filename),)
             if not os.path.exists(configured):
-                open(configured, 'a').close()
+                with open(configured, 'a', encoding='utf-8') as f:
+                    pass
         return
     except Exception as e:
         print('ERROR: got an exception')

@@ -43,7 +43,7 @@ except Exception:
 
 for flag_file in ["/opt/ovf/.configured", "/opt/ovf/configured", "/opt/unetlab/.configured"]:
     try:
-        with open(flag_file, "w") as f:
+        with open(flag_file, "w", encoding="utf-8") as f:
             f.write(uuid if uuid else "configured\n")
         os.chmod(flag_file, 0o644)
     except Exception:
@@ -66,7 +66,7 @@ if os.path.exists(profile_ovf):
 alias unl_wrapper='/opt/unetlab/wrappers/unl_wrapper'
 alias pnet_info='/opt/unetlab/scripts/pnet_info.sh'
 """
-    with open(profile_ovf, "w") as f:
+    with open(profile_ovf, "w", encoding="utf-8") as f:
         f.write(content)
     os.chmod(profile_ovf, 0o644)
     print("      -> Updated /etc/profile.d/ovf.sh")

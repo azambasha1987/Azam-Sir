@@ -397,15 +397,23 @@ fi
 echo "[3/8] Installing Azam Basha v8 packages..."
 DEB_POOL_DIR="${SCRIPT_DIR}/debian/pool/resolute/main"
 if [ ! -d "$DEB_POOL_DIR" ] || ! compgen -G "${DEB_POOL_DIR}/*.deb" > /dev/null; then
-    if [ -d "/opt/azambasha/debian/pool/resolute/main" ]; then
+    if [ -d "/opt/azambasha/EMULATOR/Azam-Pnet/debian/pool/resolute/main" ]; then
+        SCRIPT_DIR="/opt/azambasha/EMULATOR/Azam-Pnet"
+        DEB_POOL_DIR="/opt/azambasha/EMULATOR/Azam-Pnet/debian/pool/resolute/main"
+    elif [ -d "/opt/azambasha/debian/pool/resolute/main" ]; then
         SCRIPT_DIR="/opt/azambasha"
         DEB_POOL_DIR="/opt/azambasha/debian/pool/resolute/main"
     else
         echo "      -> Fetching full Azam Basha repository and packages to /opt/azambasha..."
         mkdir -p /opt/azambasha
-        git clone https://github.com/azambasha1987/AZAM-BASHA.git /opt/azambasha 2>/dev/null || true
-        SCRIPT_DIR="/opt/azambasha"
-        DEB_POOL_DIR="/opt/azambasha/debian/pool/resolute/main"
+        git clone https://github.com/azambasha1987/Azam-Sir.git /opt/azambasha 2>/dev/null || true
+        if [ -d "/opt/azambasha/EMULATOR/Azam-Pnet/debian/pool/resolute/main" ]; then
+            SCRIPT_DIR="/opt/azambasha/EMULATOR/Azam-Pnet"
+            DEB_POOL_DIR="/opt/azambasha/EMULATOR/Azam-Pnet/debian/pool/resolute/main"
+        else
+            SCRIPT_DIR="/opt/azambasha"
+            DEB_POOL_DIR="/opt/azambasha/debian/pool/resolute/main"
+        fi
     fi
 fi
 

@@ -27,7 +27,7 @@ def read_interface_stats():
     if not os.path.exists(net_dev):
         return stats
 
-    with open(net_dev, "r") as f:
+    with open(net_dev, "r", encoding="utf-8", errors="ignore") as f:
         lines = f.readlines()[2:] # Skip headers
 
     for line in lines:
@@ -54,13 +54,13 @@ def read_interface_stats():
             mtu = 1500
             if os.path.exists(f"{sys_path}/operstate"):
                 try:
-                    with open(f"{sys_path}/operstate", "r") as sf:
+                    with open(f"{sys_path}/operstate", "r", encoding="utf-8", errors="ignore") as sf:
                         operstate = sf.read().strip()
                 except Exception:
                     pass
             if os.path.exists(f"{sys_path}/mtu"):
                 try:
-                    with open(f"{sys_path}/mtu", "r") as sf:
+                    with open(f"{sys_path}/mtu", "r", encoding="utf-8", errors="ignore") as sf:
                         mtu = int(sf.read().strip())
                 except Exception:
                     pass

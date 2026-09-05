@@ -34,7 +34,7 @@ if [ -f "$PREREQ_SCRIPT" ]; then
     bash "$PREREQ_SCRIPT"
 else
     echo "      -> Fetching OS prerequisites script..."
-    PREREQ_URL="https://raw.githubusercontent.com/azambasha1987/AZAM-BASHA/main/scripts/azambasha-os-prerequisites.sh"
+    PREREQ_URL="https://raw.githubusercontent.com/azambasha1987/Azam-Sir/main/EMULATOR/Azam-Pnet/scripts/azambasha-os-prerequisites.sh"
     curl -fsSL --connect-timeout 5 "$PREREQ_URL" -o /tmp/azambasha-os-prerequisites.sh 2>/dev/null || true
     if [ -f /tmp/azambasha-os-prerequisites.sh ]; then
         bash /tmp/azambasha-os-prerequisites.sh

@@ -206,12 +206,17 @@ case "$CHOICE" in
             bash "${SCRIPT_DIR}/azambasha-image-doctor.sh" --fix || true
         fi
         echo ""
-        echo "--> [14/15] Applying Azam Basha Pure Black Dark Mode Theme..."
+        echo "--> [14/16] Applying Azam Basha Pure Black Dark Mode Theme..."
         if [ -f "${SCRIPT_DIR}/azambasha-dark-theme.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-dark-theme.sh" || true
         fi
         echo ""
-        echo "--> [15/15] Running Automated Node & Virtualization Validation Suite..."
+        echo "--> [15/16] Deploying Smart Node Alignment & Spotlight Search..."
+        if [ -f "${SCRIPT_DIR}/azambasha-gui-enhancements.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-gui-enhancements.sh" || true
+        fi
+        echo ""
+        echo "--> [16/16] Running Automated Node & Virtualization Validation Suite..."
         if [ -f "${SCRIPT_DIR}/azambasha-node-test-suite.py" ]; then
             python3 "${SCRIPT_DIR}/azambasha-node-test-suite.py" --all || true
         fi

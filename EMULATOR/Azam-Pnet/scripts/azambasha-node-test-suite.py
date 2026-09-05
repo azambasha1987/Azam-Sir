@@ -113,7 +113,7 @@ class NodeTestSuite:
         # 2. Check CPU Virtualization Extensions
         cpu_flags = ""
         try:
-            with open("/proc/cpuinfo", "r") as f:
+            with open("/proc/cpuinfo", "r", encoding="utf-8", errors="ignore") as f:
                 cpu_flags = f.read()
         except Exception:
             pass
@@ -131,7 +131,7 @@ class NodeTestSuite:
         for p in [nested_intel, nested_amd]:
             if os.path.exists(p):
                 try:
-                    with open(p, "r") as f:
+                    with open(p, "r", encoding="utf-8", errors="ignore") as f:
                         val = f.read().strip()
                         if val in ["Y", "1"]:
                             nested_ok = True
@@ -146,9 +146,9 @@ class NodeTestSuite:
         ksm_run = "/sys/kernel/mm/ksm/run"
         if os.path.exists(ksm_run):
             try:
-                with open(ksm_run, "r") as f:
+                with open(ksm_run, "r", encoding="utf-8", errors="ignore") as f:
                     if f.read().strip() == "1":
-                        pages = open("/sys/kernel/mm/ksm/pages_sharing").read().strip() if os.path.exists("/sys/kernel/mm/ksm/pages_sharing") else "0"
+                        pages = open("/sys/kernel/mm/ksm/pages_sharing", "r", encoding="utf-8", errors="ignore").read().strip() if os.path.exists("/sys/kernel/mm/ksm/pages_sharing") else "0"
                         saved_mb = (int(pages) * 4096) // (1024 * 1024)
                         self.record(tier, "KSM Memory Deduplication", "PASS", f"Active (Deduplicated ~{saved_mb} MB RAM across identical node OSs)")
                     else:
@@ -159,7 +159,7 @@ class NodeTestSuite:
         # 5. Check Unified Cgroups v2
         if os.path.exists("/sys/fs/cgroup/cgroup.controllers"):
             try:
-                with open("/sys/fs/cgroup/cgroup.controllers", "r") as f:
+                with open("/sys/fs/cgroup/cgroup.controllers", "r", encoding="utf-8", errors="ignore") as f:
                     controllers = f.read().strip()
                     self.record(tier, "Cgroups v2 Controllers", "PASS", f"Unified hierarchy active (Available: {controllers})")
             except Exception:
@@ -217,7 +217,7 @@ class NodeTestSuite:
             if os.path.exists(lp):
                 found_license = True
                 try:
-                    with open(lp, "r") as f:
+                    with open(lp, "r", encoding="utf-8", errors="ignore") as f:
                         content = f.read()
                         if "[license]" in content and "=" in content and ";" in content:
                             valid_license = True
@@ -263,7 +263,7 @@ class NodeTestSuite:
             content = f"[license]\n{hostname} = {key};\n"
             for p in ["/opt/unetlab/addons/iol/bin/iourc", "/etc/iourc", "/opt/unetlab/data/iourc"]:
                 os.makedirs(os.path.dirname(p), exist_ok=True)
-                with open(p, "w") as f:
+                with open(p, "w", encoding="utf-8") as f:
                     f.write(content)
                 os.chmod(p, 0o644)
         except Exception:
