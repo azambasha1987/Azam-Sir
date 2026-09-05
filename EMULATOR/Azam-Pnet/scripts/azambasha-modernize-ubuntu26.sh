@@ -111,9 +111,11 @@ run_or_fetch "azambasha-disable-logout.sh"
 run_or_fetch "azambasha-block-updates.sh"
 
 # Final Service Verification & Reload
-PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || echo "8.5")"
 rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
-systemctl restart "php${PHP_VER}-fpm" apache2 pnetlab-brokerd.service 2>/dev/null || true
+for svc in $(systemctl list-units --type=service --state=running 2>/dev/null | grep -o 'php[0-9.]*-fpm' | sort -u); do
+    systemctl restart "$svc" 2>/dev/null || true
+done
+systemctl restart apache2 pnetlab-brokerd.service 2>/dev/null || true
 
 echo "============================================================"
 echo "    [COMPLETE] Azam Basha is 100% Fine-Tuned for Ubuntu 26+!  "

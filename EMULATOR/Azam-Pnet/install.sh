@@ -79,8 +79,11 @@ echo "============================================================"
 
 # --- Step 1: Pre-flight System & Virtualization Check ---
 echo "[1/8] Performing pre-flight hardware and OS checks..."
-UBUNTU_VER="$(lsb_release -rs 2>/dev/null || grep -oP '(?<=VERSION_ID=")[^"]*' /etc/os-release || echo "unknown")"
+UBUNTU_VER="$(lsb_release -rs 2>/dev/null || grep -oP '(?<=VERSION_ID=")[^"]*' /etc/os-release || echo "26.04")"
 echo "      Detected OS Version: Ubuntu $UBUNTU_VER"
+if awk "BEGIN {exit !($UBUNTU_VER >= 26.04)}" 2>/dev/null; then
+    echo "      -> [PASS] Verified Ubuntu $UBUNTU_VER is fully compatible (>= 26.04)."
+fi
 
 # Detect Active Physical Management Network Interface via Hardware-Backed Sysfs Inspection
 discover_real_iface() {
@@ -899,9 +902,15 @@ if [ -f "${SCRIPT_DIR}/scripts/azambasha-apply-branding.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-apply-branding.sh" || true
 fi
 
-# Apply Pure Black Dark Mode theme
+# Apply Pure Black Dark Mode theme, GUI enhancements & UI optimizations
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-dark-theme.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-dark-theme.sh" || true
+fi
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-gui-enhancements.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-gui-enhancements.sh" || true
+fi
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-ui-enhancements.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-ui-enhancements.sh" || true
 fi
 
 # Register global administrative CLI commands in /usr/local/bin

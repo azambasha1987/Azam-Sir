@@ -72,19 +72,26 @@ for conf in /etc/php/${PHP_VER}/fpm/php.ini /etc/php/${PHP_VER}/cli/php.ini /etc
         sed -i 's/^max_input_vars = .*/max_input_vars = 100000/' "$conf" 2>/dev/null || true
         sed -i 's/^error_reporting = .*/error_reporting = E_ALL \& ~E_DEPRECATED \& ~E_NOTICE \& ~E_USER_DEPRECATED/' "$conf" 2>/dev/null || true
         
-        # OPcache Settings
-        sed -i 's/^;opcache.enable=.*/opcache.enable=1/' "$conf" 2>/dev/null || true
-        sed -i 's/^;opcache.memory_consumption=.*/opcache.memory_consumption=512/' "$conf" 2>/dev/null || true
-        sed -i 's/^;opcache.interned_strings_buffer=.*/opcache.interned_strings_buffer=64/' "$conf" 2>/dev/null || true
-        sed -i 's/^;opcache.max_accelerated_files=.*/opcache.max_accelerated_files=50000/' "$conf" 2>/dev/null || true
-        sed -i 's/^;opcache.revalidate_freq=.*/opcache.revalidate_freq=2/' "$conf" 2>/dev/null || true
+        # OPcache Settings & JIT Compiler
+        sed -i 's/^;*opcache.enable=.*/opcache.enable=1/' "$conf" 2>/dev/null || true
+        sed -i 's/^;*opcache.enable_cli=.*/opcache.enable_cli=1/' "$conf" 2>/dev/null || true
+        sed -i 's/^;*opcache.memory_consumption=.*/opcache.memory_consumption=512/' "$conf" 2>/dev/null || true
+        sed -i 's/^;*opcache.interned_strings_buffer=.*/opcache.interned_strings_buffer=64/' "$conf" 2>/dev/null || true
+        sed -i 's/^;*opcache.max_accelerated_files=.*/opcache.max_accelerated_files=50000/' "$conf" 2>/dev/null || true
+        sed -i 's/^;*opcache.revalidate_freq=.*/opcache.revalidate_freq=2/' "$conf" 2>/dev/null || true
+        sed -i 's/^;*opcache.jit=.*/opcache.jit=tracing/' "$conf" 2>/dev/null || true
+        sed -i 's/^;*opcache.jit_buffer_size=.*/opcache.jit_buffer_size=64M/' "$conf" 2>/dev/null || true
+        grep -q "opcache.jit=tracing" "$conf" || echo "opcache.jit=tracing" >> "$conf" 2>/dev/null || true
+        grep -q "opcache.jit_buffer_size=64M" "$conf" || echo "opcache.jit_buffer_size=64M" >> "$conf" 2>/dev/null || true
     fi
 done
-echo "      -> Applied high-performance OPcache, 2GB memory, and 100GB upload limits"
+echo "      -> Applied high-performance OPcache JIT Tracing (64MB), 2GB memory, and 100GB upload limits"
 
-# 5. Restart PHP-FPM Service
-systemctl restart "php${PHP_VER}-fpm" 2>/dev/null || systemctl restart php*-fpm 2>/dev/null || true
+# 5. Restart All Active PHP-FPM Services
+for svc in $(systemctl list-units --type=service --state=running 2>/dev/null | grep -o 'php[0-9.]*-fpm' | sort -u); do
+    systemctl restart "$svc" 2>/dev/null || true
+done
 
 echo "============================================================"
-echo "    [SUCCESS] PHP 8.4/8.5 Engine & Runtime Modernized!      "
+echo "    [SUCCESS] PHP 8.3/8.4/8.5+ Engine & Runtime Modernized! "
 echo "============================================================"

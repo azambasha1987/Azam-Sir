@@ -88,7 +88,7 @@ echo "[1/5] Configuring Proactive Adaptive KSM & In-Memory ZSWAP Compression..."
 if [ -d /sys/kernel/mm/ksm ]; then
     echo 1 > /sys/kernel/mm/ksm/run 2>/dev/null || true
     echo 10 > /sys/kernel/mm/ksm/sleep_millisecs 2>/dev/null || true
-    echo 2500 > /sys/kernel/mm/ksm/pages_to_scan 2>/dev/null || true
+    echo 3000 > /sys/kernel/mm/ksm/pages_to_scan 2>/dev/null || true
     echo 1 > /sys/kernel/mm/ksm/use_zero_pages 2>/dev/null || true
     echo 1 > /sys/kernel/mm/ksm/merge_across_nodes 2>/dev/null || true
 
@@ -100,7 +100,7 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'echo 1 > /sys/kernel/mm/ksm/run && echo 10 > /sys/kernel/mm/ksm/sleep_millisecs && echo 2500 > /sys/kernel/mm/ksm/pages_to_scan && echo 1 > /sys/kernel/mm/ksm/use_zero_pages && echo 1 > /sys/kernel/mm/ksm/merge_across_nodes || true'
+ExecStart=/bin/sh -c 'echo 1 > /sys/kernel/mm/ksm/run && echo 10 > /sys/kernel/mm/ksm/sleep_millisecs && echo 3000 > /sys/kernel/mm/ksm/pages_to_scan && echo 1 > /sys/kernel/mm/ksm/use_zero_pages && echo 1 > /sys/kernel/mm/ksm/merge_across_nodes || true'
 RemainAfterExit=yes
 
 [Install]
@@ -252,7 +252,7 @@ vm.swappiness = 10
 vm.vfs_cache_pressure = 50
 vm.dirty_ratio = 15
 vm.dirty_background_ratio = 5
-vm.max_map_count = 262144
+vm.max_map_count = 1048576
 
 # Network Socket Buffer Tuning (High throughput intra-lab traffic)
 net.core.rmem_max = 67108864

@@ -53,8 +53,8 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/sh -c ' \
     [ -f /sys/kernel/mm/ksm/run ] && echo 1 > /sys/kernel/mm/ksm/run; \
-    [ -f /sys/kernel/mm/ksm/pages_to_scan ] && echo 1000 > /sys/kernel/mm/ksm/pages_to_scan; \
-    [ -f /sys/kernel/mm/ksm/sleep_millisecs ] && echo 20 > /sys/kernel/mm/ksm/sleep_millisecs; \
+    [ -f /sys/kernel/mm/ksm/pages_to_scan ] && echo 3000 > /sys/kernel/mm/ksm/pages_to_scan; \
+    [ -f /sys/kernel/mm/ksm/sleep_millisecs ] && echo 10 > /sys/kernel/mm/ksm/sleep_millisecs; \
     [ -f /sys/kernel/mm/ksm/use_zero_pages ] && echo 1 > /sys/kernel/mm/ksm/use_zero_pages; \
     [ -f /sys/kernel/mm/ksm/merge_across_nodes ] && echo 1 > /sys/kernel/mm/ksm/merge_across_nodes; \
     exit 0'
@@ -69,10 +69,10 @@ systemctl enable --now azambasha-ksm-tune.service 2>/dev/null || true
 # Apply KSM immediately
 if [ -f /sys/kernel/mm/ksm/run ]; then
     echo 1 > /sys/kernel/mm/ksm/run 2>/dev/null || true
-    echo 1000 > /sys/kernel/mm/ksm/pages_to_scan 2>/dev/null || true
-    echo 20 > /sys/kernel/mm/ksm/sleep_millisecs 2>/dev/null || true
+    echo 3000 > /sys/kernel/mm/ksm/pages_to_scan 2>/dev/null || true
+    echo 10 > /sys/kernel/mm/ksm/sleep_millisecs 2>/dev/null || true
     echo 1 > /sys/kernel/mm/ksm/use_zero_pages 2>/dev/null || true
-    echo "      -> Enabled high-throughput KSM memory deduplication (1000 pages / 20ms)"
+    echo "      -> Enabled high-throughput KSM memory deduplication (3000 pages / 10ms)"
 fi
 
 echo "============================================================"

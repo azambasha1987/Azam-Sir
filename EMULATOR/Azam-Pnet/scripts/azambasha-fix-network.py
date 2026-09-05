@@ -321,7 +321,7 @@ if is_static and current_ip:
 
 # 6. Install Persistent Boot Guard Engine & Systemd Unit
 print("[6/7] Installing Azam-Pnet persistent network supervisor...")
-engine_script = """#!/usr/bin/env python3
+engine_script = r"""#!/usr/bin/env python3
 import os
 import sys
 import subprocess

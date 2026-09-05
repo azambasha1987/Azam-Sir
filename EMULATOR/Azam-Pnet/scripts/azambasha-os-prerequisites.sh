@@ -35,11 +35,23 @@ fi
 UBUNTU_VER="$(lsb_release -rs 2>/dev/null || grep -oP '(?<=VERSION_ID=")[^"]*' /etc/os-release || echo "26.04")"
 echo "      -> Detected Operating System: Ubuntu ${UBUNTU_VER} (${ARCH})"
 
+if ! awk "BEGIN {exit !($UBUNTU_VER >= 26.04)}" 2>/dev/null; then
+    echo "      [WARN] Operating system is Ubuntu ${UBUNTU_VER}. Azam-Pnet is fully optimized for Ubuntu 26.04+ (Resolute and later)."
+else
+    echo "      -> [PASS] Verified Ubuntu ${UBUNTU_VER} is fully compatible (>= 26.04)."
+fi
+
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE=a
 
 # Enable multiarch for 32-bit IOL/Dynamips binary support
 dpkg --add-architecture i386 2>/dev/null || true
+
+# Ensure 32-bit dynamic linker symlink for legacy Cisco IOL binaries
+mkdir -p /lib /usr/lib32 2>/dev/null || true
+if [ -f /usr/lib32/ld-linux.so.2 ] && [ ! -f /lib/ld-linux.so.2 ]; then
+    ln -sfn /usr/lib32/ld-linux.so.2 /lib/ld-linux.so.2 2>/dev/null || true
+fi
 
 echo "      -> Updating APT package repository indexes..."
 apt-get update -y -qq
@@ -117,7 +129,8 @@ net.ipv4.tcp_max_syn_backlog = 65535
 fs.file-max = 2097152
 fs.inotify.max_user_watches = 524288
 fs.inotify.max_user_instances = 8192
-vm.max_map_count = 262144
+vm.max_map_count = 1048576
+vm.vfs_cache_pressure = 50
 EOF
 sysctl --system 2>/dev/null || true
 

@@ -12,15 +12,45 @@ echo "============================================================"
 
 # 1. Discover Real Physical Uplink NIC
 REAL_IFACE=""
-for iface in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | cut -d'@' -f1); do
-    case "$iface" in
-        lo|pnet*|docker*|veth*|virbr*|tun*|tap*|br-*) continue ;;
-        ens*|enp*|eno*|eth*)
-            REAL_IFACE="$iface"
+if [ -d /sys/class/net/pnet0/brif ]; then
+    for slave in /sys/class/net/pnet0/brif/*; do
+        if [ -d "$slave" ] && [ -e "/sys/class/net/$(basename "$slave")/device" ]; then
+            REAL_IFACE="$(basename "$slave")"
             break
-            ;;
-    esac
-done
+        fi
+    done
+fi
+
+if [ -z "$REAL_IFACE" ]; then
+    for iface_path in /sys/class/net/*; do
+        [ -e "$iface_path" ] || continue
+        iface=$(basename "$iface_path")
+        case "$iface" in
+            lo|pnet*|docker*|veth*|virbr*|tun*|tap*|br-*|dummy*|wg*|zt*) continue ;;
+        esac
+        if [ -e "$iface_path/device" ]; then
+            if [ -f "$iface_path/carrier" ] && [ "$(cat "$iface_path/carrier" 2>/dev/null)" = "1" ]; then
+                REAL_IFACE="$iface"
+                break
+            fi
+            if [ -z "$REAL_IFACE" ]; then
+                REAL_IFACE="$iface"
+            fi
+        fi
+    done
+fi
+
+if [ -z "$REAL_IFACE" ]; then
+    for iface in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | cut -d'@' -f1); do
+        case "$iface" in
+            lo|pnet*|docker*|veth*|virbr*|tun*|tap*|br-*) continue ;;
+            ens*|enp*|eno*|eth*)
+                REAL_IFACE="$iface"
+                break
+                ;;
+        esac
+    done
+fi
 
 if [ -z "$REAL_IFACE" ]; then
     REAL_IFACE="ens33"
