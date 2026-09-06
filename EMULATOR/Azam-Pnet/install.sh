@@ -26,7 +26,7 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "/opt/azambasha/EMULATOR/Azam-Pnet")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "/opt/azambasha/EMULATOR/Azam-Pnet")"
 LOG_FILE="/var/log/azambasha-install.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
@@ -314,6 +314,7 @@ export NEEDRESTART_MODE=a
 apt-get update -y
 
 CORE_DEPS=(
+    "linux-headers-$(uname -r)"
     apache2
     mysql-server
     libapache2-mod-fcgid
@@ -434,6 +435,9 @@ if [ -n "$DEB_POOL_DIR" ] && [ -d "$DEB_POOL_DIR" ] && compgen -G "${DEB_POOL_DI
             dpkg -i --force-depends --force-confdef --force-confold "$deb_path" 2>/dev/null || true
         fi
     done
+
+    echo "      -> Fixing broken dependencies for installed packages..."
+    apt-get --fix-broken install -y 2>/dev/null || true
 
     # Neutralize legacy OVF wizard and apply authoritative network broker & interfaces synchronization
     if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-eth0-permanent.py" ]; then

@@ -40,7 +40,7 @@ for target_dir in target_dirs:
                     # Inject attribute before class declaration
                     modified = False
                     def repl(match):
-                        nonlocal modified
+                        global modified
                         modified = True
                         return "#[\\AllowDynamicProperties]\n" + match.group(1)
                     

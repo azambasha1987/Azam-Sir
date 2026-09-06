@@ -124,7 +124,9 @@ fi
 
 # Set CPU Scaling Governor to Performance across all cores
 for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-    echo performance > "$g" 2>/dev/null || true
+    if [ -f "$g" ]; then
+        echo performance > "$g" 2>/dev/null || true
+    fi
 done
 echo "  [✔] CPU Scaling Governor: Set to Performance across all host cores"
 
