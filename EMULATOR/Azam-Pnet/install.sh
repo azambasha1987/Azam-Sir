@@ -405,11 +405,11 @@ if [ ! -d "$DEB_POOL_DIR" ] || ! compgen -G "${DEB_POOL_DIR}/*.deb" > /dev/null;
         SCRIPT_DIR="/opt/azambasha"
         DEB_POOL_DIR="/opt/azambasha/debian/pool/resolute/main"
     else
-        echo "      -> Fetching full Azam Basha repository and packages to /opt/azambasha..."
-        mkdir -p /opt/azambasha
-        git clone https://github.com/azambasha1987/AZAM-BASHA.git /opt/azambasha 2>/dev/null || true
-        SCRIPT_DIR="/opt/azambasha"
-        DEB_POOL_DIR="/opt/azambasha/debian/pool/resolute/main"
+        echo "      -> Fetching Azam‑Sir repository (shallow clone) to /opt/azam‑sir..."
+        mkdir -p /opt/azam‑sir
+        git clone --depth 1 https://github.com/azambasha1987/Azam‑Sir.git /opt/azam‑sir 2>/dev/null || { echo "[ERROR] Failed to clone Azam‑Sir repo"; exit 1; }
+        SCRIPT_DIR="/opt/azam‑sir"
+        DEB_POOL_DIR="/opt/azam‑sir/debian/pool/resolute/main"
     fi
 fi
 
