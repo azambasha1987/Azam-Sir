@@ -1042,22 +1042,39 @@ if [ -z "$HOST_IP" ]; then
     HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")"
 fi
 
-# Configure dynamic console login banner (/etc/issue & /etc/motd)
-cat > /etc/issue << EOF
+# Install dynamic banner updater — regenerates /etc/issue with the LIVE IP on every boot
+# so the VM console header always shows the correct address after reboots or IP changes.
+BANNER_SCRIPT="/usr/local/bin/azambasha-update-banner.sh"
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-update-banner.sh" ]; then
+    cp -f "${SCRIPT_DIR}/scripts/azambasha-update-banner.sh" "$BANNER_SCRIPT"
+    chmod +x "$BANNER_SCRIPT"
+fi
 
-============================================================
-           Azam Basha v8 Virtual Network Emulator
-============================================================
-  Web UI Access   : https://${HOST_IP}/
-  Default User    : admin
-  Default Pass    : azam
-  SSH Management  : ssh root@${HOST_IP} (Password: azam)
-============================================================
+# Install as a systemd one-shot service (runs after network is up)
+cat > /etc/systemd/system/azambasha-banner.service << 'SVCEOF'
+[Unit]
+Description=Azam Basha — Update console banner with live IP
+After=network-online.target
+Wants=network-online.target
 
-\S (\l)
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/azambasha-update-banner.sh
+RemainAfterExit=yes
 
-EOF
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+
+systemctl daemon-reload 2>/dev/null || true
+systemctl enable azambasha-banner.service 2>/dev/null || true
+
+# Run immediately to fix the current banner right now
+if [ -x "$BANNER_SCRIPT" ]; then
+    bash "$BANNER_SCRIPT" || true
+fi
 cp -f /etc/issue /etc/issue.net 2>/dev/null || true
+
 
 # --- Automated Post-Install Self-Test Verification Suite ---
 echo ""
