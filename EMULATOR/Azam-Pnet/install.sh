@@ -856,8 +856,6 @@ fi
 if [ -n "$STATIC_IP" ] && [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" ]; then
     IP_ONLY="${STATIC_IP%%/*}"
     bash "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" "$IP_ONLY" "255.255.255.0" "$STATIC_GW" || true
-elif [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" ]; then
-    bash "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" || true
 fi
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-php-modernizer.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-php-modernizer.sh" || true

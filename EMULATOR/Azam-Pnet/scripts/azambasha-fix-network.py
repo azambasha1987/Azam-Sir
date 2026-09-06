@@ -113,6 +113,19 @@ try:
 except Exception:
     pass
 
+# Detect static intent before purging
+is_static = False
+if os.path.isdir("/etc/netplan"):
+    for f in os.listdir("/etc/netplan"):
+        if f.endswith((".yaml", ".yml")):
+            try:
+                with open(os.path.join("/etc/netplan", f), "r") as nf:
+                    content = nf.read()
+                    if "dhcp4: false" in content or "dhcp4: no" in content or ("addresses:" in content and "dhcp4: true" not in content):
+                        is_static = True
+            except Exception:
+                pass
+
 # Purge any conflicting netplan YAMLs
 for f in os.listdir("/etc/netplan"):
     if f.endswith((".yaml", ".yml")) and f != "01-pnetlab-netcfg.yaml":
@@ -144,7 +157,6 @@ print("[5/7] Synchronizing authoritative /etc/network/interfaces and Netplan 1.0
 current_ip = ""
 current_mask = "255.255.255.0"
 current_gw = ""
-is_static = False
 
 # Inspect live network on pnet0 or real_iface
 rc, stdout, _ = run_cmd(["ip", "-o", "-4", "addr", "show", "pnet0"])
