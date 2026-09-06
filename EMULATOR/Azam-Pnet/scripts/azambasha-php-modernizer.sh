@@ -19,48 +19,72 @@ echo "      -> Patching PHP classes with #[AllowDynamicProperties]..."
 python3 - << 'PYEOF'
 import os, re
 
-target_dirs = ["/opt/unetlab/html/includes", "/opt/unetlab/html/includes/Slim", "/opt/unetlab/html/includes/models"]
+# The pnetlab .deb ships PHP files with #[\AllowDynamicProperties] (note the backslash).
+# PHP 8.2+ treats this as a PHP attribute identical to #[AllowDynamicProperties].
+# PHP 8.5 fatal-errors if the attribute appears more than once on the same class.
+# We must use exact string matching (not regex) because the backslash confuses patterns.
+
+ATTR_BS  = '#[\\AllowDynamicProperties]'   # with backslash (as shipped by .deb)
+ATTR_PLAIN = '#[AllowDynamicProperties]'    # without backslash (injected by us)
 
 class_regex = re.compile(r'^(class\s+[A-Za-z0-9_]+)', re.MULTILINE)
-# Matches one or more consecutive #[AllowDynamicProperties] lines (with optional whitespace between)
-dup_regex   = re.compile(r'(#\[AllowDynamicProperties\]\s*\n){2,}')
+
+target_dirs = [
+    "/opt/unetlab/html/includes",
+    "/opt/unetlab/html/includes/Slim",
+    "/opt/unetlab/html/includes/models",
+]
+
+deduped = 0
+injected = 0
 
 for target_dir in target_dirs:
-    if not os.path.exists(target_dir):
+    if not os.path.isdir(target_dir):
         continue
     for root, dirs, files in os.walk(target_dir):
-        for file in files:
-            if not file.endswith('.php'):
+        dirs[:] = [d for d in dirs if d not in ('.git', 'node_modules')]
+        for fname in files:
+            if not fname.endswith('.php'):
                 continue
-            file_path = os.path.join(root, file)
+            fpath = os.path.join(root, fname)
             try:
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
+                content = open(fpath, encoding='utf-8', errors='ignore').read()
+                changed = False
 
-                # ── Pass 1: Deduplicate repeated #[AllowDynamicProperties] ──────
-                # PHP 8.5 fatal-errors if the same attribute appears more than once.
-                new_content = dup_regex.sub('#[AllowDynamicProperties]\n', content)
-                if new_content != content:
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write(new_content)
-                    content = new_content
+                # ── Pass 1: Deduplicate #[\AllowDynamicProperties] (backslash form) ──
+                if content.count(ATTR_BS) > 1:
+                    first = content.find(ATTR_BS)
+                    content = content[:first + len(ATTR_BS)] + \
+                              content[first + len(ATTR_BS):].replace(ATTR_BS, '')
+                    changed = True
+                    deduped += 1
 
-                # ── Pass 2: Inject into classes that have no attribute yet ───────
-                if '#[AllowDynamicProperties]' in content:
-                    continue
+                # ── Pass 2: Deduplicate #[AllowDynamicProperties] (plain form) ────────
+                if content.count(ATTR_PLAIN) > 1:
+                    first = content.find(ATTR_PLAIN)
+                    content = content[:first + len(ATTR_PLAIN)] + \
+                              content[first + len(ATTR_PLAIN):].replace(ATTR_PLAIN, '')
+                    changed = True
 
-                modified = False
-                def repl(match):
-                    global modified
-                    modified = True
-                    return "#[\\AllowDynamicProperties]\n" + match.group(1)
+                # ── Pass 3: Inject into files that have neither form yet ──────────────
+                has_attr = (ATTR_BS in content) or (ATTR_PLAIN in content)
+                if not has_attr:
+                    def repl(m):
+                        global injected
+                        injected += 1
+                        return ATTR_PLAIN + '\n' + m.group(1)
+                    new_content = class_regex.sub(repl, content, count=1)
+                    if new_content != content:
+                        content = new_content
+                        changed = True
 
-                new_content = class_regex.sub(repl, content, count=1)
-                if modified:
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write(new_content)
-            except Exception:
-                pass
+                if changed:
+                    open(fpath, 'w', encoding='utf-8').write(content)
+            except Exception as e:
+                print(f"  SKIP {fpath}: {e}")
+
+print(f"  Deduplicated: {deduped} file(s)")
+print(f"  Injected attr: {injected} file(s)")
 PYEOF
 
 
