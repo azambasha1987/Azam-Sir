@@ -12,3 +12,6 @@
 # Batch and PowerShell files keep CRLF for Windows
 *.bat text eol=crlf
 *.ps1 text eol=crlf
+
+# Debian package binaries — store as-is, no diff/merge/line-ending conversion
+*.deb binary

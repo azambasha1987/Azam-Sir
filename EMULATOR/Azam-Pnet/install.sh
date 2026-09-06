@@ -399,23 +399,35 @@ fi
 
 # --- Step 3: Install Azam Basha Debian Packages ---
 echo "[3/8] Installing Azam Basha v8 packages..."
-DEB_POOL_DIR="${SCRIPT_DIR}/debian/pool/resolute/main"
-if [ ! -d "$DEB_POOL_DIR" ] || ! compgen -G "${DEB_POOL_DIR}/*.deb" > /dev/null; then
-    if [ -d "/opt/azambasha/debian/pool/resolute/main" ]; then
-        SCRIPT_DIR="/opt/azambasha"
-        DEB_POOL_DIR="/opt/azambasha/debian/pool/resolute/main"
-    else
-        echo "      -> Fetching Azam‑Sir repository (shallow clone) to /opt/azam‑sir..."
-        mkdir -p /opt/azam‑sir
-        git clone --depth 1 https://github.com/azambasha1987/Azam‑Sir.git /opt/azam‑sir 2>/dev/null || { echo "[ERROR] Failed to clone Azam‑Sir repo"; exit 1; }
-        SCRIPT_DIR="/opt/azam‑sir"
-        DEB_POOL_DIR="/opt/azam‑sir/debian/pool/resolute/main"
+# ------------------------------------------------------------
+# Priority 1: Use local Debian pool shipped alongside this script.
+# Priority 2: Shallow-clone the Azam-Sir GitHub repo as fallback.
+# If neither source provides .deb files, skip gracefully (warn only).
+# ------------------------------------------------------------
+
+# Determine where the local pool may be (next to this script)
+LOCAL_POOL_CANDIDATE="${SCRIPT_DIR}/debian/pool/resolute/main"
+REMOTE_REPO_DIR="/opt/azam-sir"
+DEB_POOL_DIR=""
+
+if [ -d "$LOCAL_POOL_CANDIDATE" ] && compgen -G "${LOCAL_POOL_CANDIDATE}/*.deb" > /dev/null 2>&1; then
+    echo "      -> Local Debian pool found at $LOCAL_POOL_CANDIDATE — using it directly."
+    DEB_POOL_DIR="$LOCAL_POOL_CANDIDATE"
+else
+    echo "      -> No local pool found. Fetching Azam-Sir repository (shallow clone) to $REMOTE_REPO_DIR..."
+    if [ ! -d "$REMOTE_REPO_DIR/.git" ]; then
+        git clone --depth 1 https://github.com/azambasha1987/Azam-Sir.git "$REMOTE_REPO_DIR" 2>/dev/null \
+            || echo "      [WARNING] Could not clone Azam-Sir repo — skipping remote pool."
+    fi
+    REMOTE_POOL="${REMOTE_REPO_DIR}/debian/pool/resolute/main"
+    if [ -d "$REMOTE_POOL" ] && compgen -G "${REMOTE_POOL}/*.deb" > /dev/null 2>&1; then
+        DEB_POOL_DIR="$REMOTE_POOL"
     fi
 fi
 
-if [ -n "$DEB_POOL_DIR" ] && [ -d "$DEB_POOL_DIR" ] && compgen -G "${DEB_POOL_DIR}/*.deb" > /dev/null; then
+if [ -n "$DEB_POOL_DIR" ]; then
     echo "      Found local debian packages in $DEB_POOL_DIR. Resolving latest production builds..."
-    
+
     # Priority dependency order for clean master server installation
     PKG_PREFIXES=(
         "pnetlab-schema"
@@ -449,10 +461,11 @@ if [ -n "$DEB_POOL_DIR" ] && [ -d "$DEB_POOL_DIR" ] && compgen -G "${DEB_POOL_DI
         python3 "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" || true
     fi
 else
-    echo "      [ERROR] Local debian directory ($DEB_POOL_DIR) not found or empty."
-    echo "      Please ensure the debian/pool directory is included in your standalone folder."
-    exit 1
+    echo "      [WARNING] No Debian packages found in local or remote pool — skipping package installation."
+    echo "      You can populate debian/pool/resolute/main/ with .deb files and re-run the installer."
 fi
+
+
 
 # --- Step 4: Configure Database & Schemas ---
 echo "[4/8] Configuring MySQL database, schemas, and admin credentials..."
