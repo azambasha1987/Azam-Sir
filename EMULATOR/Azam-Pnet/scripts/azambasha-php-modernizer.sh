@@ -29,20 +29,14 @@ ATTR_PLAIN = '#[AllowDynamicProperties]'    # without backslash (injected by us)
 
 class_regex = re.compile(r'^(class\s+[A-Za-z0-9_]+)', re.MULTILINE)
 
-target_dirs = [
-    "/opt/unetlab/html/includes",
-    "/opt/unetlab/html/includes/Slim",
-    "/opt/unetlab/html/includes/models",
-]
-
+# Scan the entire html tree — the .deb distributes duplicates across
+# Slim/, Slim/Http/, Slim/Middleware/, Slim/Helper/, Slim/Exception/ and models/.
+SCAN_ROOT = "/opt/unetlab/html"
 deduped = 0
 injected = 0
 
-for target_dir in target_dirs:
-    if not os.path.isdir(target_dir):
-        continue
-    for root, dirs, files in os.walk(target_dir):
-        dirs[:] = [d for d in dirs if d not in ('.git', 'node_modules')]
+for root, dirs, files in os.walk(SCAN_ROOT):
+    dirs[:] = [d for d in dirs if d not in ('.git', 'node_modules')]
         for fname in files:
             if not fname.endswith('.php'):
                 continue
