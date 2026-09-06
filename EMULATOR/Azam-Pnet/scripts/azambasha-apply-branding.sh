@@ -42,13 +42,17 @@ echo "  [✔] Platform version set to 1.0.0 (v1.0.0)"
 # 2. Deploy Modernized Login Page & Default Credentials Notice (admin / azam)
 LOGIN_SRC="${PARENT_DIR}/login"
 if [ -d "$LOGIN_SRC" ]; then
-    mkdir -p /opt/unetlab/html/login
+    mkdir -p /opt/unetlab/html/login/img
     [ -f "${LOGIN_SRC}/index.html" ] && cp -f "${LOGIN_SRC}/index.html" /opt/unetlab/html/login/index.html
     [ -f "${LOGIN_SRC}/login.css" ] && cp -f "${LOGIN_SRC}/login.css" /opt/unetlab/html/login/login.css
     [ -f "${LOGIN_SRC}/login.js" ] && cp -f "${LOGIN_SRC}/login.js" /opt/unetlab/html/login/login.js
-    chmod 0644 /opt/unetlab/html/login/* 2>/dev/null || true
+    # Deploy avatar/logo image assets
+    [ -d "${LOGIN_SRC}/img" ] && cp -rf "${LOGIN_SRC}/img/." /opt/unetlab/html/login/img/
+    chmod 0644 /opt/unetlab/html/login/*.html /opt/unetlab/html/login/*.css /opt/unetlab/html/login/*.js 2>/dev/null || true
+    chmod 0644 /opt/unetlab/html/login/img/* 2>/dev/null || true
     chown -R www-data:www-data /opt/unetlab/html/login 2>/dev/null || true
     echo "  [✔] Modernized Azam Basha Login UI deployed to /opt/unetlab/html/login/"
+    echo "  [✔] Avatar logo image deployed to /opt/unetlab/html/login/img/"
 elif [ -f /opt/unetlab/html/login/index.html ]; then
     sed -i -E 's/admin<\/strong> \/ <strong>[a-zA-Z0-9]+/admin<\/strong> \/ <strong>azam/g' /opt/unetlab/html/login/index.html 2>/dev/null || true
     sed -i '/Offline appliance access/d' /opt/unetlab/html/login/index.html 2>/dev/null || true
