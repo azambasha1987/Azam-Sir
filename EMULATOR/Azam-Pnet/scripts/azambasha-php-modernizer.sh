@@ -22,35 +22,47 @@ import os, re
 target_dirs = ["/opt/unetlab/html/includes", "/opt/unetlab/html/includes/Slim", "/opt/unetlab/html/includes/models"]
 
 class_regex = re.compile(r'^(class\s+[A-Za-z0-9_]+)', re.MULTILINE)
+# Matches one or more consecutive #[AllowDynamicProperties] lines (with optional whitespace between)
+dup_regex   = re.compile(r'(#\[AllowDynamicProperties\]\s*\n){2,}')
 
 for target_dir in target_dirs:
     if not os.path.exists(target_dir):
         continue
     for root, dirs, files in os.walk(target_dir):
         for file in files:
-            if file.endswith('.php'):
-                file_path = os.path.join(root, file)
-                try:
-                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        content = f.read()
-                    
-                    if '#[AllowDynamicProperties]' in content:
-                        continue
-                    
-                    # Inject attribute before class declaration
-                    modified = False
-                    def repl(match):
-                        global modified
-                        modified = True
-                        return "#[\\AllowDynamicProperties]\n" + match.group(1)
-                    
-                    new_content = class_regex.sub(repl, content, count=1)
-                    if modified:
-                        with open(file_path, 'w', encoding='utf-8') as f:
-                            f.write(new_content)
-                except Exception as e:
-                    pass
+            if not file.endswith('.php'):
+                continue
+            file_path = os.path.join(root, file)
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                # ── Pass 1: Deduplicate repeated #[AllowDynamicProperties] ──────
+                # PHP 8.5 fatal-errors if the same attribute appears more than once.
+                new_content = dup_regex.sub('#[AllowDynamicProperties]\n', content)
+                if new_content != content:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(new_content)
+                    content = new_content
+
+                # ── Pass 2: Inject into classes that have no attribute yet ───────
+                if '#[AllowDynamicProperties]' in content:
+                    continue
+
+                modified = False
+                def repl(match):
+                    global modified
+                    modified = True
+                    return "#[\\AllowDynamicProperties]\n" + match.group(1)
+
+                new_content = class_regex.sub(repl, content, count=1)
+                if modified:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(new_content)
+            except Exception:
+                pass
 PYEOF
+
 
 # 3. Ensure Session Cookie Compatibility in api.php
 API_PHP="/opt/unetlab/html/api.php"
