@@ -850,7 +850,8 @@ if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" ]; then
     python3 "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" || true
 fi
 if [ -n "$STATIC_IP" ] && [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" ]; then
-    bash "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" "$STATIC_IP" "255.255.255.0" "$STATIC_GW" || true
+    IP_ONLY="${STATIC_IP%%/*}"
+    bash "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" "$IP_ONLY" "255.255.255.0" "$STATIC_GW" || true
 elif [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" || true
 fi
