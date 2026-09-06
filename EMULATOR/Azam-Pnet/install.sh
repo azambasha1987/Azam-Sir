@@ -662,6 +662,7 @@ chown -R www-data:www-data /opt/unetlab/data/Exports /opt/unetlab/data/Logs /opt
 chmod -R 775 /opt/unetlab/data/Exports /opt/unetlab/data/Logs /opt/unetlab/labs 2>/dev/null || true
 
 # Patch remove_uuid.sh for nested subfolders and absolute zip paths
+mkdir -p /opt/unetlab/scripts
 cat << 'EOF' > /opt/unetlab/scripts/remove_uuid.sh
 #!/bin/bash
 if [ $# -ne 1 ]; then
