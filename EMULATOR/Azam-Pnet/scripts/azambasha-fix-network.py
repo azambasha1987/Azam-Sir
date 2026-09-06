@@ -120,9 +120,10 @@ if os.path.isdir("/etc/netplan"):
         if f.endswith((".yaml", ".yml")):
             try:
                 with open(os.path.join("/etc/netplan", f), "r") as nf:
-                    content = nf.read()
-                    if "dhcp4: false" in content or "dhcp4: no" in content or ("addresses:" in content and "dhcp4: true" not in content):
+                    data = nf.read()
+                    if any(x in data for x in ["dhcp4: false", "dhcp4: no", "addresses:"]):
                         is_static = True
+                        break
             except Exception:
                 pass
 
@@ -263,9 +264,12 @@ iface lo inet loopback
 # The primary network interface
 # BEGIN pnetlab-netcfg pnet0
 allow-hotplug pnet0
-iface pnet0 inet dhcp
-    pre-up ip link set dev {real_iface} up
-    bridge_ports {real_iface}
+iface pnet0 inet static
+    address ${current_ip}
+    netmask ${current_mask}
+    gateway ${current_gw}
+    pre-up ip link set dev ${real_iface} up
+    bridge_ports ${real_iface}
     bridge_stp off
 # END pnetlab-netcfg pnet0
 """
