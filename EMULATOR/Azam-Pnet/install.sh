@@ -26,7 +26,21 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "/opt/azambasha/EMULATOR/Azam-Pnet")"
+# Resolve the real script directory.
+# When piped via curl|bash, BASH_SOURCE[0] is /dev/stdin — dirname gives /dev.
+# In that case we self-clone the repo into /opt/azam-pnet and use that instead.
+_RAW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
+if [ -z "$_RAW_DIR" ] || [ "$_RAW_DIR" = "/dev" ] || [ ! -f "${_RAW_DIR}/install.sh" ]; then
+    echo "[*] Running via curl|bash — cloning repo to /opt/azam-pnet for local pool access..."
+    MYREPO_DIR="/opt/azam-pnet"
+    if [ ! -d "${MYREPO_DIR}/.git" ]; then
+        git clone --depth 1 https://github.com/azambasha1987/MyRepo.git "$MYREPO_DIR" 2>/dev/null \
+            || { echo "[ERROR] Failed to self-clone repo. Check internet/GitHub access."; exit 1; }
+    fi
+    SCRIPT_DIR="${MYREPO_DIR}/EMULATOR/Azam-Pnet"
+else
+    SCRIPT_DIR="$_RAW_DIR"
+fi
 LOG_FILE="/var/log/azambasha-install.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
@@ -400,28 +414,33 @@ fi
 # --- Step 3: Install Azam Basha Debian Packages ---
 echo "[3/8] Installing Azam Basha v8 packages..."
 # ------------------------------------------------------------
-# Priority 1: Use local Debian pool shipped alongside this script.
-# Priority 2: Shallow-clone the Azam-Sir GitHub repo as fallback.
-# If neither source provides .deb files, skip gracefully (warn only).
+# Priority 1: Use the local Debian pool shipped alongside this script
+#             (works when git-cloned or folder-copied to the VM).
+# Priority 2: Clone MyRepo from GitHub as fallback
+#             (used when running via curl|bash AND the self-clone above
+#              somehow resolved to a path without the pool).
+# If neither source provides .deb files, warn and continue.
 # ------------------------------------------------------------
 
-# Determine where the local pool may be (next to this script)
 LOCAL_POOL_CANDIDATE="${SCRIPT_DIR}/debian/pool/resolute/main"
-REMOTE_REPO_DIR="/opt/azam-sir"
 DEB_POOL_DIR=""
 
 if [ -d "$LOCAL_POOL_CANDIDATE" ] && compgen -G "${LOCAL_POOL_CANDIDATE}/*.deb" > /dev/null 2>&1; then
     echo "      -> Local Debian pool found at $LOCAL_POOL_CANDIDATE — using it directly."
     DEB_POOL_DIR="$LOCAL_POOL_CANDIDATE"
 else
-    echo "      -> No local pool found. Fetching Azam-Sir repository (shallow clone) to $REMOTE_REPO_DIR..."
-    if [ ! -d "$REMOTE_REPO_DIR/.git" ]; then
-        git clone --depth 1 https://github.com/azambasha1987/Azam-Sir.git "$REMOTE_REPO_DIR" 2>/dev/null \
-            || echo "      [WARNING] Could not clone Azam-Sir repo — skipping remote pool."
+    # Fallback: clone MyRepo (contains the .deb pool) into /opt/azam-pnet
+    MYREPO_FALLBACK="/opt/azam-pnet"
+    echo "      -> Local pool not found. Cloning MyRepo to $MYREPO_FALLBACK for package pool..."
+    if [ ! -d "${MYREPO_FALLBACK}/.git" ]; then
+        git clone --depth 1 https://github.com/azambasha1987/MyRepo.git "$MYREPO_FALLBACK" 2>/dev/null \
+            || echo "      [WARNING] Could not clone MyRepo — skipping package installation."
     fi
-    REMOTE_POOL="${REMOTE_REPO_DIR}/debian/pool/resolute/main"
-    if [ -d "$REMOTE_POOL" ] && compgen -G "${REMOTE_POOL}/*.deb" > /dev/null 2>&1; then
-        DEB_POOL_DIR="$REMOTE_POOL"
+    FALLBACK_POOL="${MYREPO_FALLBACK}/EMULATOR/Azam-Pnet/debian/pool/resolute/main"
+    if [ -d "$FALLBACK_POOL" ] && compgen -G "${FALLBACK_POOL}/*.deb" > /dev/null 2>&1; then
+        DEB_POOL_DIR="$FALLBACK_POOL"
+        # Also update SCRIPT_DIR so post-install scripts are found
+        SCRIPT_DIR="${MYREPO_FALLBACK}/EMULATOR/Azam-Pnet"
     fi
 fi
 
